@@ -75,20 +75,33 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
+        newCapsules = successorGameState.getCapsules()
+        ghostPositions = [x.getPosition() for x in newGhostStates]
+        newCapsuleDistances = [manhattanDistance(newPos, pos) for pos in newCapsules]
+        newGhostDistances = [manhattanDistance(newPos, pos) for pos in ghostPositions]
         score = successorGameState.getScore()
-        #the closer to the foods the better state
         foodDistances = [manhattanDistance(newPos, pos) for pos in newFood.asList()]
-
+        
+        #the closer to the foods the better state
         if(foodDistances):
             closestFoodPos = min(foodDistances)
             score -= closestFoodPos
-        
-        #the farther from the ghosts the better state
-        ghostPositions = [x.getPosition() for x in newGhostStates]
+        #if the ghost if far away rush to nearest capsule
+        if min(newGhostDistances)>10:
+            if newCapsules:
+                score += 25/min(newCapsuleDistances)
+        #the farther ghost the better state
         for pos in ghostPositions:
             score += manhattanDistance(pos, newPos)*1
+        #if ghost is very close run away
+        if(min(newGhostDistances)<2):
+            score -= 500
+        #this for preventing pacman to come next to capsule and do not eat it
+        for time in newScaredTimes:
+            if time==40:
+                score +=30
         return score
-
+        
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -140,10 +153,13 @@ class MinimaxAgent(MultiAgentSearchAgent):
     def maxValue(self, state, agentId, depth):
         action = ""
         value = (-math.inf, action)
+        #All possible successor states and corresponding actions
         successorTuples = [(state.generateSuccessor(agentId, action), action) for action in state.getLegalActions(agentId)]
+        #find the one among successors who gives the max value
         for suc in successorTuples:
             action = suc[1]
             maxVal = max(value[0], self.getValue(suc[0], (agentId+1) % state.getNumAgents(), depth)[0])
+            #change value tuple is the max value has changed
             if(maxVal != value[0]):
                 value = (maxVal, action)
         return value
@@ -152,15 +168,18 @@ class MinimaxAgent(MultiAgentSearchAgent):
         action = ""
         value = (math.inf, action)
         successorTuples = [(state.generateSuccessor(agentId, action), action) for action in state.getLegalActions(agentId)]
+        #find the one among successors who gives the min value
         for suc in successorTuples:
             action = suc[1]
             nextIndex = (agentId+1) % state.getNumAgents();
             minVal = math.inf
+            #if the next agent is still in the same depth
             if(nextIndex != 0):
                 minVal = min(value[0], self.getValue(suc[0], nextIndex, depth)[0])
+            #if the next agent is 0, that means the next depth
             else:
                 minVal = min(value[0], self.getValue(suc[0], nextIndex, depth+1)[0])
-                
+            #change value tuple is the min value has changed
             if(minVal != value[0]):
                 value = (minVal, action)
         return value
@@ -201,7 +220,8 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
             maxVal = max(value[0], self.getValue(successorState, nextAgentId, depth, alpha, beta)[0])
             if(maxVal != value[0]):
                 value = (maxVal, action)
-                
+            #if the possible max value is already bigger than the min value of previous min agent (beta)
+            #do not expand further
             if value[0] > beta:
                 return value
             alpha = max(alpha, value[0])
@@ -221,7 +241,8 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
                 
             if(minVal != value[0]):
                 value = (minVal, action)
-                    
+            #if the possible min value is already smaller than the max value of previous max agent (alpha)
+            #do not expand further
             if value[0] < alpha:
                 return value
             beta = min(beta, value[0])
@@ -264,16 +285,20 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         val = 0
         value = (val, action)
         successorTuples = [(state.generateSuccessor(agentId, action), action) for action in state.getLegalActions(agentId)]
+        #equal prob for each successor state
         prob = 1/len(successorTuples)
         for suc in successorTuples:
             action = suc[1]
             nextIndex = (agentId+1) % state.getNumAgents();
+            #increase expected value accordingly
             if(nextIndex != 0):
                 val += self.getValue(suc[0], nextIndex, depth)[0]*prob
             else:
                 val += self.getValue(suc[0], nextIndex, depth+1)[0]*prob
         
+        #choose a random successor
         randomTuple = random.choice(successorTuples)
+        #return the random successor with calculated expected value
         value = (val, randomTuple[1])
         return value
 
@@ -305,8 +330,6 @@ def betterEvaluationFunction(currentGameState):
     currentGhostStates = currentGameState.getGhostStates()
     currentGhostPositions = currentGameState.getGhostPositions()
     scaredTimes = [ghostState.scaredTimer for ghostState in currentGhostStates]
-    
-
     score = currentGameState.getScore()
     
     score -= foodAmount*10    
