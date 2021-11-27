@@ -292,7 +292,9 @@ def betterEvaluationFunction(currentGameState):
     Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
     evaluation function (question 5).
 
-    DESCRIPTION: <write something here so we know what you did>
+    DESCRIPTION: I wanted pacman to move towards capsules if there is no ghosts around
+    and once pacman gets the capsule I wanted pacman move towards ghosts immediately, so I can get higher scores
+    Also remaining food on the map is a criteria. I wanted pacman to move towards foods as well
     """
     "*** YOUR CODE HERE ***"
     # Useful information you can extract from a GameState (pacman.py)
@@ -307,15 +309,21 @@ def betterEvaluationFunction(currentGameState):
 
     score = currentGameState.getScore()
     
-    score -= foodAmount*5
-    
+    score -= foodAmount*10    
+
+    distancesToCapsules = [manhattanDistance(currentPos, capsulePos) for capsulePos in currentCapsules]
+    distancesToGhosts = [manhattanDistance(currentPos, ghostPos) for ghostPos in currentGhostPositions]
+        
+    if distancesToCapsules and distancesToGhosts and min(distancesToCapsules) < min(distancesToGhosts) and min(distancesToGhosts)<10:
+        score += 25/min(distancesToCapsules)
+            
     for capsulePos in currentCapsules:
         score -= manhattanDistance(currentPos, capsulePos)
     
     for time in scaredTimes:
-        if time > 5:
+        if time > 2:
             for ghostPos in currentGhostPositions:
-                score -= manhattanDistance(currentPos, ghostPos)*5
+                score -= manhattanDistance(currentPos, ghostPos)*10
         else:                    
             for ghostPos in currentGhostPositions:
                 score += manhattanDistance(currentPos, ghostPos)*2
